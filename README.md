@@ -31,4 +31,9 @@ p-JFets (I think it exist only one depletion-mode-pMOSFet-chip!).
 The gain of the opamp's of the LT1301 can changed from +6 to -6 with two PhotoMosRelais, or better 
 over the relais You can select the opamp with gain +6 or -6.
 
-The current is limited most to max 50mA . only for jFet's/MosFet's it goes up to about 100mA.
+The current is limited most to max 50mA . only for jFet's/MosFet's it goes in a second step up to about 100mA.
+
+The software is developed with ARDUINo IDE 1.8.4, STM32duino is about one year (2017) old, but I think the newest version would work to.
+
+The maplemini has Bootloader 2.0 (20k RAM, 120k Flash)
+

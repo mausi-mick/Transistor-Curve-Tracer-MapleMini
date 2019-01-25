@@ -1,7 +1,7 @@
 # Transistor-Curve-Tracer-MapleMini
 
 Based on the super project "Transistor Curve Tracer" from Peter Balch :
-https://www.instructables.com/id/Transistor-Curve-Tracer/
+https://www.instructables.com/id/Transistor-Curve-Tracer/  based on an Arduino Mini Pro Mini 
 I ported the software from the 8-bit Arduino Platform to 32 bit STM32duino / MapleMini.
 
 For me was the MapleMini the best choice: cheap, quick, enough program-space, more accessible port-pins as the Arduino Uno/Nano/... and more flexibility and accuracy :
@@ -43,4 +43,19 @@ The current is limited most to max 50mA . only for jFet's/MosFet's it goes in a 
 The software is developed with the ARDUINO IDE 1.8.4, STM32duino is about one year (2017) old, but I think the newest version would work to.
 
 You have to load  Bootloader 2.0 (20k RAM, 120k Flash) in MapleMini.
+
+The main components are:
+
+ILI9341 TFT-SPI-Display 2.8" with Touch ca 6.70 €
+MapleMini                                  3.60 €
+DACMCP4822                                 3.20 € 
+AQY212 6x                                  6.00 €
+LT1013                                     1.40 €
+TCA0372                                    1.10 €
+MT3608 3x                                  2.00 €
+Rotary Encoder 2x                          2.00 €
+                          SUM:            26.00 €
+                                          
++ pcb's, wire, zinn, sockets, battery, chassis ...     
+
 

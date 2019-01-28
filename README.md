@@ -67,9 +67,10 @@ The main components are:
 - TCA0372                                    1.10 €
 - MT3608 3x                                  2.00 €
 - Rotary Encoder 2x                          2.00 €
-- nMOS switch    7x                          2.00 €                 
--                           SUM:            28.00 €
-+ resitors, capacitors, diodes, test-sockets,                                          
+- nMOS switch    7x                          2.00 €    
+- ICL7662 (-12V) + TSP490603(-5/-3.3V)       4.00 €
+-                           SUM:            32.00 €
++ resistors, capacitors, diodes, test-sockets,                                          
 + pcb's, wire, zinn, sockets, battery, chassis ...     
 
 The hardware is nearly finsihed, the software is growing ! 

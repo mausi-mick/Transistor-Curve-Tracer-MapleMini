@@ -23,6 +23,7 @@
 // 2018.01.25                            New Menu with better separation start buttons "P" and "N" and more space for the parameters and EEPROM-Savings.
 // 2019.02.17 STM32_MaMi_CurveTracer_04: aus 02xx: new pins for ENC2, BTN13/BTN14, better graphic 
 // 2019.02.19                            Scan nJFET with Vds 2V,3V,4V,6V and 12V, easier update C4-parameter like c4_DIO, c4_FET with polling count3 
+// 2019.02.22                            show simulated resistances in trces from p- and n-JFETs. 
  
 #include <EEPROM.h>
 
@@ -1092,12 +1093,26 @@ void InitGraph()         {
   }
   
   tft.setTextColor(ILI9341_DARKGREY);  tft.drawString("0", 2, TFT_HEIGHT + 4, 1);
-  tft.drawLine(0, 0, 0, TFT_HEIGHT - 10, ILI9341_DARKGREY);
-  tft.drawLine(0, TFT_HEIGHT - 1, TFT_WIDTH, TFT_HEIGHT - 1, ILI9341_DARKGREY);
-
-  for (ix = 1; ix <= 12; ix++) {
+  tft.drawFastVLine(0, 0, TFT_HEIGHT - 10, ILI9341_DARKGREY);          //  tft.drawLine(0, 0, 0, TFT_HEIGHT - 10, ILI9341_DARKGREY);
+  tft.drawFastHLine(0, TFT_HEIGHT - 1, TFT_WIDTH, ILI9341_DARKGREY);   //  tft.drawLine(0, TFT_HEIGHT - 1, TFT_WIDTH, TFT_HEIGHT - 1, ILI9341_DARKGREY);
+  for (ix = 1; ix <= 12; ix++) {   // verticale Lines
     x = 25 * ix ; // 26 #################
-    tft.drawLine(x, 0, x, TFT_HEIGHT - 13, ILI9341_DARKGREY); //DrawLine(x, 0, x, TFT_HEIGHT, ILI9341_DARKGREY);
+    tft.drawFastVLine(x, 0, TFT_HEIGHT - 13, ILI9341_DARKGREY);  //   tft.drawLine(x, 0, x, TFT_HEIGHT - 13, ILI9341_DARKGREY);
+  }
+  uint8_t test_r = 1;
+  if (test_r == 1) {
+    if (fet_v > 0)  { //
+      tft.drawLine(0,239,6*25,0,ILI9341_LIGHTGREY);  // 6*25
+      if      (s_yfactor == 1)    tft.drawNumber(fet_v * 25,150,2,2);  // 0...  50mA
+      else if (s_yfactor == 5)    tft.drawNumber(fet_v * 50,150,2,2);  // 0...  10mA 
+      else  /*s_Yfactor == 9) */  tft.drawNumber(fet_v * 5,150,2,2);// 0... 100mA   
+      tft.drawString("Ohm",150,15, 2);
+      tft.drawLine(0,239,12*25,0,ILI9341_LIGHTGREY); // 12*25
+      if      (s_yfactor == 1)    tft.drawNumber(fet_v * 50,290,2,2);  // 0...  50mA
+      else if (s_yfactor == 5)    tft.drawNumber(fet_v *100,290,2,2);  // 0...  10mA 
+      else  /*s_Yfactor == 9) */  tft.drawNumber(fet_v * 10,290,2,2);  // 0... 100mA   
+      tft.drawString("Ohm",290,15, 2);
+    }  
   }
   if (fet_v > 0) zen_v = fet_v;  // test test test 
   // x - scala #######################################################################
@@ -1158,8 +1173,7 @@ void InitGraph()         {
       if (s_yfactor <= 5) tft.drawNumber(iy / s_yfactor, x + 3, y, 2);  //DrawInt(iy, SmallFont, ILI9341_DARKGREY);
       else                    tft.drawNumber(iy + iy, x + 3, y, 2); // max 100mA
     }
-
-    tft.drawLine(0, y, TFT_WIDTH, y, ILI9341_DARKGREY); //DrawLine(0, y, TFT_WIDTH, y, ILI9341_DARKGREY);
+    tft.drawFastHLine(0, y, TFT_WIDTH, ILI9341_DARKGREY);      //  tft.drawLine(0, y, TFT_WIDTH, y, ILI9341_DARKGREY);
 
   }
   x = x + 30;                    // 10/50mA
@@ -1930,14 +1944,10 @@ void ScanKind(TkindDUT kind) {
   Adc_12V = Aver4_ADC(pin_ADC3_Bat_12V);  //#######################
 
   // tft.fillRect(90,0,10,12,ILI9341_BLACK); tft.setTextColor(ILI9341_WHITE);tft.drawNumber(kind,90,0,2);   delay(2000);
-
- // if ((kind == tkNJFET) && (c4_FET != 12))  {
-  if (kind == tkNJFET)  {
-    fet_v = c4_FET;  // scale
-   // zen_v = c4_FET;  // scale 
-   // s_sechs = zen_v;
-  }  
+ 
+  if ((kind == tkNJFET) || (kind == tkPJFET))  fet_v = c4_FET;  // scale
   else fet_v = 0;   // ?? 0 = default = 12V
+ 
   InitGraph();
 
   kind = kind_s;  // ##############################################################################
@@ -2142,7 +2152,7 @@ void Scan_p_Dev(TkindDUT kind, int minBase, int maxBase, int incBase, int Adc_12
   int base, delay_d;
   int id, zw_maxb, zw_minb, zw_incb; // max 4095  ### d
   uint8_t s_gain = 3, s_blink = 0, s_kindcur = 0, s_zencur = 0;
-  float fim = 0, fimax, fu0, fu2, fu3, fud, fum, fim_pmos = 0.5;
+  float fim = 0, fimax, fu0, fu2, fu3, fud, fum, fim_pmos = 0.5,ua3=0;
   float idy1, idy2, idy3, idy4, idy5;
   // tft.fillRect(0,0,10,12,ILI9341_BLACK); tft.setTextColor(ILI9341_WHITE);tft.drawNumber(1,0,0,2);
   //  Serial.print("+ 00 Scan_p_Dev kind: ");Serial.println(kind);
@@ -2178,7 +2188,7 @@ void Scan_p_Dev(TkindDUT kind, int minBase, int maxBase, int incBase, int Adc_12
   
     if (kind == tkPJFET)   {
       zw_maxb = minBase;   // change min - max
-      zw_minb = maxBase;   // change  max - min
+      zw_minb = 0;        // change  max - min maBase, now V-ds
       zw_incb = incBase;
       s_vgate0 = 0;
       s_jfet   = 1;
@@ -2206,6 +2216,7 @@ second_scan_pDev:
   prev_y = 239;
 
   iu3 = Aver4_ADC(pin_ADC3_Bat_12V);   // A3  <<<<< 12.240 V = 4095
+  ua3 = 3.2331* (float) iu3;           // U-A3 in mV
   DacVcc = dmax;          //4095; // DAC_MAX - 1;       // max index dacdmax;  // 4095 1023 255;  <<< in setup
   maxYposGain = -1;
   minBaseGain = 0;
@@ -2251,6 +2262,8 @@ second_scan_pDev:
     incBase = zw_incb;
     minBase = zw_minb;
     maxBase = zw_maxb;
+    s_sechs = c4_FET;   // ??
+    fet_v   = c4_FET;
     digitalWrite(BTN0,  LOW);   // HIGH: 24V only for diodes/zener TCA0372
     digitalWrite(BTN32, HIGH);  // HIGH: gain = 3 for TCA0372
 
@@ -2270,7 +2283,8 @@ second_scan_pDev:
     // delay(2500);   //#############################
     if (base >= 0)  {     //
       if (kind == tkPJFET) {
-        id = 2067 +  base * 16.667;  // 2067 = 12.4 V
+        id = (int)(ua3/6.0)/*2067*/ +  base * 16.667;  // 2067 * 6 = 12.4 V
+        
       }
 
       else if (kind == tkPNP)     {

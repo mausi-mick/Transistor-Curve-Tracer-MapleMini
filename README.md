@@ -20,26 +20,30 @@ or about this project:  https://www.stm32duino.com/viewtopic.php?t=4269
 
 Therefore I had the possibility to integrate other features:
 
-- integration of two rotary encoders (on isr) for a more comfortable changing of the parameters, a dual Dac (MCP4822) with the same 12-bit resolution as the ADC's on the MapleMini.
+- integration of two rotary encoders (on isr) for a more comfortable changing of the parameters, a dual DAC (MCP4822) with the same 12-bit resolution as the ADC's on the MapleMini.
 - possibility to save the parameters in the internal EEPROM
 - possibility compare similar or complementary devices on the same screen
 - changing x-scale for diodes/zeners (0,1,2,3,4,6,12,24V) (0: starts with 24V and search the optimal scale)
 - changing y-sacle for diodes from 0...10mA  to 0...50mA
-- changing y-scale for MosFets/jFets automatic depending on max. IDssmax from 50mA to 10mA or 50mA to 100mA
-- changing x-scale for NJFETs from 12V (default), 6V, 4V, 3V, 2V.
+- changing y-scale for MosFETs/jFETs automatic depending on max. IDss from 50mA to 10mA or 50mA to 100mA
+- changing x-scale for n-jFETs from 12V (default), 6V, 4V, 3V, 2V.
 
-The hardware of the tracer is different from Peters version:
+The schemnatic of the tracer is different from Peters version:
 
-I use switches connect the Emitter/Source respectively Collector/Drain to +/- supply-voltage only while measuring - most time the DUT is only with the base connected, Emtter / Collector are isolated.
+I use switchesto connect the Emitter/Source respectively Collector/Drain to +/- supply-voltage only while measuring - most time the DUT is only with the base connected, Emtter / Collector are isolated.
 At first tested with mechanical relais, I changed to  PhotoMosRelais because of less space on the board and less supply-
 current( 40ma/5V -> 2-5mA/3.3V). So the MapleMini-ports can drive the PhotoMosRelais direct.
 
-As amplifier to drive the Emitter/Source ... Collector/Drain I use one amplifier of the TCA0372 with gain = +3 (default).
-The output of the TCA0372 can manage more than 100mA, the negative supply-voltage I put down to about -3V, because the TCA0372 is not a real rail-to-rail-amplifier by this currents. The negative supply near -3V is generated with a charge-pump (from+3.3V).
+As amplifier to drive the Emitter/Source ... Collector/Drain I made another design.
+Peter used a LM358 standard dual amplfier with emitter-followers, but I think it was difficult to make it stable and there was a big drop on the positive rail.
+Therefore I searched and tested some other amplfiers with drive capacibility of more than 50mA, among others NE5532 , L2272 and TCA0372.
+The TCA0372 was the best in relation to stability and lo drop on the suppy (r-to-r).
+I use only one amplifier of the TCA0372 with gain = +3 (default).
+The output of the TCA0372 can manage more than 100mA, the negative supply-voltage I put down to about -3V, because the TCA0372 is not a real rail-to-rail-amplifier at this currents. The negative supply near -3V is generated with a charge-pump (from+3.3V).
 With the U-DAC (MCP4822) I can generate 0...12V similar the version from Peter.
-As amplfier for the base-current/gate-voltage I use a LT1013 dual amplifier, because it's a R to R and can work up to max. 44V.
-The TCA0372 has a normal supply-voltage from 12.6V, changing to about 26V for measuring zeners with Vz > 12V. Therefore I have to change the gain of the TCA0372 to +6 (V-DAC-max  (=4.095V) * 6 >=24V).
-For measuring nJFETS in the ohmic-region (< Vpinch) I can switch the x-sacle from 12V ... to 2V.
+As amplifier for the base-current/gate-voltage I use a LT1013 dual amplifier, because it's a R to R and can work up to max. 44V.
+The TCA0372 has a normal supply-voltage from 12.6V, changing to about 26V for measuring zeners with Vz > 12V and <= 24V. Therefore I have to change the gain of the TCA0372 to +6 (V-DAC-max  (=4.095V) * 6 >=24V).
+For measuring nJFETS in the ohmic-region (< Vpinch) I can switch the x-scale at the display from 12V ... to 2V.
 Between 2V and 4V the gain of the TCA0372 is switched from 3 to 2, the V-DAC MCP4822 works than from 0...2.047V with step = 0,5mV.  
 
 The LT1013 has a positive supply-voltage from around 26V, a negative supply from -12v via a LM317L and ICL7662 charge-pump.

@@ -28,16 +28,15 @@ Therefore I had the possibility to integrate other features:
 - changing y-scale for MosFETs/jFETs automatic depending on max. IDss from 50mA to 10mA or 50mA to 100mA
 - changing x-scale for n-jFETs from 12V (default), 6V, 4V, 3V, 2V.
 
-The schemnatic of the tracer is different from Peters version:
+The schematic of the tracer is different from Peters version:
 
-I use switchesto connect the Emitter/Source respectively Collector/Drain to +/- supply-voltage only while measuring - most time the DUT is only with the base connected, Emtter / Collector are isolated.
-At first tested with mechanical relais, I changed to  PhotoMosRelais because of less space on the board and less supply-
-current( 40ma/5V -> 2-5mA/3.3V). So the MapleMini-ports can drive the PhotoMosRelais direct.
+I use switches to connect the Emitter/Source/Cathode respectively Collector/Drain/Anode to +/- supply-voltage only while measuring - most time the DUT is only with the base connected, Emtter / Collector are isolated.
+At first I tested it with a dual toggle switch, than with mechanical relais, than I changed to  PhotoMosRelais because of less space on the board and less supply-current( 40ma/5V -> 2-5mA/3.3V). So the MapleMini-ports can drive the PhotoMosRelais direct.
 
 As amplifier to drive the Emitter/Source ... Collector/Drain I made another design.
-Peter used a LM358 standard dual amplfier with emitter-followers, but I think it was difficult to make it stable and there was a big drop on the positive rail.
+Peter used a LM358 standard dual amplifier with emitter-followers, but I think it was difficult to make it stable and there was a big drop on the positive rail.
 Therefore I searched and tested some other amplfiers with drive capacibility of more than 50mA, among others NE5532 , L2272 and TCA0372.
-The TCA0372 was the best in relation to stability and lo drop on the suppy (r-to-r).
+The TCA0372 was the best in relation to stability and to low drop on the supply (r-to-r) at 50mA.
 I use only one amplifier of the TCA0372 with gain = +3 (default).
 The output of the TCA0372 can manage more than 100mA, the negative supply-voltage I put down to about -3V, because the TCA0372 is not a real rail-to-rail-amplifier at this currents. The negative supply near -3V is generated with a charge-pump (from+3.3V).
 With the U-DAC (MCP4822) I can generate 0...12V similar the version from Peter.

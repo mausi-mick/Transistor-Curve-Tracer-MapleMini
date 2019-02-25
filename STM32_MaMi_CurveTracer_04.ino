@@ -196,6 +196,7 @@ int MinIanode = 0;  //5 ###############################################
 int IncIanode = 0; // ### di max-voltage
 int MaxIanode = 5;  // ### di test
 long ngJFET = dmax; // 12 bit 4095
+long iiold = 0;
 
 int minYposGain, maxYposGain, minBaseGain, maxBaseGain; // used when calc gain
 
@@ -270,14 +271,14 @@ uint16_t ILI9341_TraceCol = 0;
 uint16_t ILI9341_ErrorCol = 0;
 uint16_t ILI9341_KindCol  = 0;
 uint16_t ILI9341_BASE     = 0;
-//                             AQUA    RED   ORANGE GREEN  WHITE, YELLOW, BLUE, PURPLE, LIGHTGREY
-uint16_t ILI9341_TraceDio[] = {0x07FF,0xF800,0xFD20,0x07E0,0xFFFF,0xFFE0,0x001F,0x780F,0xC618};
+//                             AQUA   GREEN  YELLOW,ORANGE, RED  ,PURPLE,LightBLUE ,BLUE, LIGHTGREY,WHITE
+uint16_t ILI9341_TraceDio[] = {0x07FF,0x07E0,0xFFE0,0xFD20,0xF800,0x780F,0x061F,0x001F,0xC618,0xFFFF};
 uint16_t ILI9341_TracePnp[] = {0x87D5,0xD7DD,0xD7DD,0xDFBE,0x07EF,0x07E0,0x7800};  
 uint16_t ILI9341_TraceNpn[] = {0xF791,0xFFE0,0xFF50,0xFD20,0xF561,0xF481,0xF800};
 uint8_t cnt_diocol=0,cnt_npncol=0,cnt_pnpcol=0;
 
 
-uint16_t ivxa = 0;
+
 long ias = 0, iuc = 0, iug = 0;
 float isf = 0;
 #define LED_ON  digitalWrite(BOARD_LED, LOW)
@@ -1073,7 +1074,7 @@ void InitGraph()         {
   }
   else {  // compare with oher deveices
     if (s_diode == 1)  {
-      if (cnt_diocol >= 8) cnt_diocol = 0;
+      if (cnt_diocol > 9) cnt_diocol = 0;
       ILI9341_TraceCol = ILI9341_TraceDio[cnt_diocol];
       cnt_diocol++; 
       return;
@@ -1691,6 +1692,7 @@ inline int Aver4_ADC(int pin) {
   int sum = 0;
   for (uint8_t i = 0; i < 4; i++) {
     sum += analogRead(pin);
+    delayMicroseconds(6);   //########################### 23.02.19
   }
   return sum = sum >> 2;  // /4
 }
@@ -1829,13 +1831,16 @@ void Graph( int ia0, int ia1, int ia2, int ia3, int base) {    //
   else {                                       // test, test ----------------------###########################  
     if (iu == iug) {  // <= ??
       if (ii > 0) {
+ //     if (ii >= iiold) {  //###########################################  no-tunnel-diode ??
         isf = isf + iif;
         iuc++;
+ //       iiold  = ii;
       }
       else prev_y = 239;
       return;
     }
     else {
+      if (iu < iug) return; //#####################################
       if (iuc > 1) iif = isf/(float)iuc;
       else iif = isf;
       iug = iu;
@@ -1868,11 +1873,12 @@ void Graph( int ia0, int ia1, int ia2, int ia3, int base) {    //
 
   if (ii == prev_y)  s_flat = 1;
 //  Serial.print("iug ");Serial.print(iug);Serial.print(" iif ");Serial.print(iif);Serial.print(" ia1 ");Serial.println(ia1);
-    
-  if ((iu == prev_x) && (ii > prev_y + 1 )) tft.drawLine(iu,prev_y,iu,ii,ILI9341_TraceCol);
+  if ((s_ndiode == 1) || ( s_pdiode == 1))  { 
+    if ((iu == prev_x) && (ii > prev_y + 1 )) tft.drawLine(iu,prev_y,iu,ii,ILI9341_TraceCol);
   
-  else                                      tft.drawPixel( iu, ii, ILI9341_TraceCol);
-
+    else                                      tft.drawPixel( iu, ii, ILI9341_TraceCol);
+  }
+  else   tft.drawPixel( iu, ii, ILI9341_TraceCol);  // pixel at bpn/pnp, MOS- and j-FET 
   prev_x = iu;
   prev_y = ii;
 
@@ -1908,7 +1914,9 @@ void Graph( int ia0, int ia1, int ia2, int ia3, int base) {    //
       if (s_tend == 0)  pinchJFET(iu, ii);         // pinch_off-vol
     }
   }
-  if (s_flat == 1)    {  // flat trace
+  if ((s_flat == 1) ||                   // flat trace
+     ((s_jfet == 1) && (iu > 210)))  {   // ##### trace not linear at the end
+    s_flat = 1;  
     if (s_secy == 0)   {
       if ((iu > 160) && (ii > 180))  {  // between 239 and 180 <<-- some j-FETs have small IDss
   //    if ((ii > TFT_HEIGHT - 48) && (ii > 260))  {   // 192
@@ -2205,11 +2213,12 @@ second_scan_pDev:
   s_zencur  = 0;
   s_blink   = 0;
   s_sechs   = 0;
-  ivxa = 0;
+  
   ias = 0;
   iuc = 0;
   iug = 0;
   s_dio = 0;
+  iiold = 0;
   maxBase = zw_maxb;
   minBase = zw_minb;
   prev_x = 0;
@@ -2278,8 +2287,8 @@ second_scan_pDev:
 //  Serial.print(" zen_v "); Serial.print(zen_v);   Serial.print(" sec_x "); Serial.println(s_secx);
 
   for (base = minBase; base <= maxBase; base += incBase)   {
-
-    cntv = 0;
+    iug = 0;
+    //cntv = 0;
     // delay(2500);   //#############################
     if (base >= 0)  {     //
       if (kind == tkPJFET) {
@@ -2295,7 +2304,9 @@ second_scan_pDev:
 
         idy3 = idy3 * 3.2331;                 // u_bat mV  3877 * 3.2331 = 12535 divider 133.2/33.2
 
-        idy3 = (12670.0 - 680.0) - idy2;      // 3 ### 4050  mV on OPA NE5532 = 12180 mV(OP PIN7) - 680mV Ube #########
+
+      //  idy3 = (12670.0 - 680.0) - idy2;      // 3 ### 4050  mV on OPA NE5532 = 12180 mV(OP PIN7) - 680mV Ube #########
+        idy3 = (idy3 - 680.0) - idy2;           // 3 ### 4050  mV on OPA LT1013 = 12180 mV(OP PIUN1/PIN7) - 680mV Ube #########
         //    idy3 = (idy3 - 630.0) - idy2;         // 3 ### 12.282 = Uout(max) PIN7 OPA LT1013 (=2047 *6)    = 24570 mV(OP PIN7) - 680mV Ube ######### 11.9V Ib=0
         //   idy4 = idy3 / 2.923;                  // 4 ### Voltage  Pin8 DAC 1227 mV on MCP4802/MCP4812 (11905-idy2/2.933
         idy4 = idy3 / 3;                    // 4 ### Voltage  Pin8 DAC 1227 mV on MCP4802/...22 (11905-idy2)/6.0 (gain LT1013), but 0.5mV/step
@@ -2321,7 +2332,7 @@ second_scan_pDev:
         // idy5 = idy3  / 3.0542;                  // set Dac_base for voltage  // bei R4=68.1k,R5=33.2k  :  3.0542mV at R4=50k,R5=26k: 2.923 mV,  1mV pro Dac_Count
         idy5 = idy3  / 3.0;                     // set Dac_base for voltage  // bei R4=100.0k,R5=20.0k :  0,5 mV pro Dac_Count (x gain = 6) 
        
-        id = (int)idy5;
+        id = (int)(0.5+idy5);
         /*
           tft.fillRect(90,70,50,80,ILI9341_BLACK);
           tft.drawNumber((int)idy1,90, 70,2);  // base *100  (vgs in mv) 1 ### test
@@ -2361,8 +2372,8 @@ second_scan_pDev:
 
       else                 {     //         SetDacBase(id, 5);
         dac12(id, 0, 2);         // channel A ,0... 2047 >> 0...+12V, gain-I = +6
-        //   dac12(id,0,4);           // channel A ,0... 4047 >> 0...+12V gain=3 ####################################################
-        delayMicroseconds(400);  // 400
+      
+        delayMicroseconds(100);  // 400 #####################################################
       }
 
 
@@ -2373,7 +2384,7 @@ second_scan_pDev:
     //    Adc_12V = Aver4_ADC(pin_ADC3_Bat_12V); // average over 4 reads A3  //analogRead(pin_ADC3_Bat_12V); // A3 Bat-Voltage
 
     dac12(4095, 1, 4); // set TCA0372 to max-volt for start
-    delayMicroseconds(100);
+    delayMicroseconds(200);  // 100
 
     digitalWrite(BTN14, HIGH);   // relais p-dev closed, starts Scan_p_Dev ###############################################################
     delay(5);
@@ -2381,24 +2392,29 @@ second_scan_pDev:
 
 
     for (DacVcc = 4095; DacVcc >= 0; DacVcc -= incv)   { // pDev
-      cntv++;
-
+    
       dac12(DacVcc, 1, 4);                  // set DAC-B voltage 0...4095                    // u-DAC p-dev ##################################################
 
 
-      delay_d = 3;               // 1 ######
-      delayMicroseconds(delay_d);           // if (DacVcc == 4095)   delayMicroseconds(250);   else delayMicroseconds(10);
+  //    delay_d = 1;               // 3 ######
+   //   delayMicroseconds(delay_d);           // if (DacVcc == 4095)   delayMicroseconds(250);   else delayMicroseconds(10);
  
-      if (s_secy != 2)       {     //  normal: 50mA /100mA
+   
+      if (s_secy != 2)  {     //  normal: 50mA /100mA  
         iu3 = analogRead(pin_ADC3_Bat_12V); // A3 Bat-Voltage
+       // delayMicroseconds(6);
         iu0 = analogRead(pin_ADC0_Vo_OPV);  // A0 Output TCA0372
+       // delayMicroseconds(6);
         iu2 = analogRead(pin_ADC2_Vc_PNP);  // A2 Collector PNP
-      }
-      else   {   // 2
+      //k  delayMicroseconds(6);
+      
+     }
+      else   {   // 10mA or pnp : factor = 5
         iu0 = Aver4_ADC(pin_ADC0_Vo_OPV);  // average over 4 reads A0
         iu2 = Aver4_ADC(pin_ADC2_Vc_PNP);  // average over 4 reads A2 Collector PNP
         iu3 = Aver4_ADC(pin_ADC3_Bat_12V); // average over 4 reads A3
-      }
+      
+     }
      // Serial.print("# iu3 " ); Serial.print(iu3); Serial.print(" iu0 " ); Serial.print(iu0);Serial.print(" iu2 " ); Serial.println(iu2);
   
 
@@ -2450,14 +2466,14 @@ second_scan_pDev:
     }     // for DacVcc  // for DacVcc
 
     digitalWrite(BTN14, LOW);  // relais open, stop Scan_p_Dev: p-Diode, pnp, p_MOS, pJFET
-    delay(2);
+    delay(4);
     if ((base >= 0)  &&      // > 0
         (base <= maxBase))    {
 
       tft.setTextColor(ILI9341_BASE);
       switch (kind) {
         case tkPNP:
-          tft.drawNumber(base, prev_x + 4, prev_y - 6, 2); //  DrawInt(base , SmallFont, ILI9341_WHITE);
+          tft.drawNumber(base, prev_x + 12, prev_y - 6, 2); //  DrawInt(base , SmallFont, ILI9341_WHITE);
           break;
         case tkPMOS:
           if (prev_x > 270) prev_x = 264;
@@ -2628,13 +2644,14 @@ second_scan_nDev:
   s_sechs   = 0;
   s_hfe     = 0;
   ils  = 0;
+  iiold = 0;
 
   dacv_max = dmax;
   maxBase = zw_maxb;  // ??########
   minBase = zw_minb;  // ??#######
   prev_x = 0;
   prev_y = 239;
-  ivxa   = 0;
+  
   ias = 0;
   iuc = 0;
   iug = 0;
@@ -2717,10 +2734,8 @@ second_scan_nDev:
   // Serial.print("# min: ");Serial.print(minBase);Serial.print(" max: ");Serial.print(maxBase);Serial.print(" inc: ");Serial.println(incBase);
 
   for (base = minBase; base <= maxBase; base = base + incBase) {
-
-    cntv = 0;
-
- //   ILI9341_TraceCol = ILI9341_WHITE;
+    iug = 0;
+  
     if ( base >= 0)       {  //
 
       if (kind == tkNPN) {
@@ -2760,11 +2775,11 @@ second_scan_nDev:
       if (id > dmax) break;
       if ( kind == tkNJFET ) {  // ub=-12V
         dac12(id, 0, 2);       // 0...-12V gain=-6
-        delayMicroseconds(20);
+        delayMicroseconds(50);
       }
       else {
-        dac12(id, 0, 2);       // 0...-12V gain +6
-        delayMicroseconds(20);
+        dac12(id, 0, 2);       // 0...+12V gain +6
+        delayMicroseconds(50);
         if (kind == tkNDIODE) base = 1;  //maxBase;
       }
 
@@ -2776,9 +2791,8 @@ second_scan_nDev:
     delay(5);
 
     for (DacVcc = 0; DacVcc <= dacv_max; DacVcc +=  incv) {   // +=8 // +=2 ###      // m+=8 Scan_n_Dev###
-      cntv++;
-     
-      delay_d = 4;
+   
+         
       if ((kind == tkNDIODE) &&
         (s_sechs > 0) && (s_sechs <= 2))  {  // diodes < 2V: DAC-B : 0...2.047V
           // if (zen_v <= 2)  {
@@ -2823,10 +2837,12 @@ second_scan_nDev:
         s_gain = 3;
         if (s_secx == 0) s_xfactor = s_xfactor / 3; //################################################################################
       }
-      if (delay_d > 0) delayMicroseconds(delay_d);
+      
       if (s_secy != 2) {      // normal: 50mA /100mA
         iu0 = analogRead(pin_ADC0_Vo_OPV);  // A0
+        delayMicroseconds(6);
         iu1 = analogRead(pin_ADC1_Vc_NPN);  // A1
+        delayMicroseconds(6);
       }
       else {                  // 2
         iu0 = Aver4_ADC(pin_ADC0_Vo_OPV);  // A0

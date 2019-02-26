@@ -113,8 +113,8 @@ unsigned int lastEncoderPos[MAXENCODERS];
 
 uint8_t s_func = 0, s_diode = 0, s_npn = 0, s_pnp = 0, s_fet = 1, s_depl = 0, s_dio = 0;
 volatile uint8_t s_comp = 0;
-uint8_t s_first = 1, s_touch = 0, s_save = 0, s_trace = 0, s_start = 1, s_auto = 0;
-uint8_t s_pinch = 0, s_jfet = 0, s_ndiode = 0, s_pdiode = 0, s_vgate0 = 0, s_tend = 0, zen_v = 0, fet_v = 0; // Z??
+uint8_t s_first = 1, s_touch = 0, s_save = 0, s_trace = 0, s_start = 1, s_auto = 0, s_flat = 0;
+uint8_t s_pinch = 0, s_jfet = 0, s_ndiode = 0, s_pdiode = 0, s_vgate0 = 0, s_tend = 0, zen_v = 0, fet_v = 0;    // Z??
 int8_t s_secy = 0, s_secx = 0, s_exec_npn = 0, s_exec_pnp = 0, s_graph0;
 int s_yfactor = 1, s_xfactor = 1;
 int pinch_v = 0, cntv = 0;
@@ -1780,7 +1780,7 @@ void Graph( int ia0, int ia1, int ia2, int ia3, int base) {    //
   int16_t idi, idu;
   int ifa,ifz;
   float if0,if1,if2,if3,iif,ifd,ivf,fac_f=0;
-  uint8_t s_flat = 0;
+  
   // if (s_func == 1) drawFunc(1,1,60,"Graph-n",ILI9341_WHITE);  //#### to slow
 
   if (s_ndev == 1)     {   // n_Dev: npn, nDiode, n_mos, n_FET
@@ -2173,6 +2173,7 @@ void Scan_p_Dev(TkindDUT kind, int minBase, int maxBase, int incBase, int Adc_12
   delay(5);
   s_ndev = 0;
   s_npn  = 0;
+  s_flat = 0;
    
   fimax = 5.0001;        // 50 mA on 100 Ohm    // tft.drawFloat(fimax,1,70,0,2);
   f_thrp = 0;
@@ -2483,9 +2484,9 @@ second_scan_pDev:
           break;
         case tkPJFET:
           if (prev_x > 270) prev_x = 264;
-          tft.fillRect(prev_x, prev_y - 6, 30, 13, ILI9341_BLACK);
+          tft.fillRect(prev_x, prev_y - 6, 41, 13, ILI9341_BLACK);
           drawDec1(base , prev_x + 4, prev_y - 6, 2, ILI9341_BASE); // 1 Nachkomma-Stelle
-          tft.drawString(" V", prev_x + 36, prev_y - 6, 2); //DrawString("V", SmallFont, ILI9341_WHITE);
+          tft.drawString(" V", prev_x + 29, prev_y - 6, 2); //DrawString("V", SmallFont, ILI9341_WHITE);
           break;
       }  // switch
 
@@ -2586,6 +2587,7 @@ void Scan_n_Dev(TkindDUT kind, int minBase, int maxBase, int incBase) {
 
   s_pdev = 0;
   s_pnp  = 0;
+  s_flat = 0;
      
   zw_maxb = maxBase;   //##########################
   zw_minb = minBase;   //##########################
@@ -2899,7 +2901,7 @@ second_scan_nDev:
           break;
         case tkNMOS:
           if (prev_x > 220) prev_x = 220;  // 270 test #######################################
-          tft.fillRect(prev_x, prev_y - 6, 32, 13, ILI9341_BLACK);
+          tft.fillRect(prev_x, prev_y - 6, 41, 13, ILI9341_BLACK);
           if (s_depl == 1) {
             tft.setTextColor(ILI9341_YELLOW);                    // complete n-MOS with: depl.
             tft.drawString("depl.", 280, 33, 2);

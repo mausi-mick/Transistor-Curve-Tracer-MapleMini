@@ -177,6 +177,7 @@ int maxDIOa = 5, incDIOa = 0, minDIOa; //.minAnodea=5,incAnodea=1;
 int16_t c2_BIP, c2_DIO, c2_FET, c2_MOS = 0;
 int16_t c3_BIP, c3_DIO, c3_FET, c3_MOS = 0;
 int16_t c4_BIP, c4_DIO, c4_FET, c4_MOS = 0;
+int16_t i_3V=0,i_7V = 0;
 
 //int Adc_12V  = 0;  // test
 int DacVcc;
@@ -1808,6 +1809,8 @@ void Graph( int ia0, int ia1, int ia2, int ia3, int base) {    //
   iua = iu;
   iia = ii;
 
+  
+
   if (s_sechs == 24) iu = iu + iu; // ################################################
   // if (s_sechs > 0) iu = iu/(int)((float)(s_sechs)/1.05);
   if (s_sechs > 0) iu = iu / s_sechs;
@@ -1871,7 +1874,7 @@ void Graph( int ia0, int ia1, int ia2, int ia3, int base) {    //
   }
   else return; //ii = 239;  ############################################################
 
-  if (ii == prev_y)  s_flat = 1;
+  
 //  Serial.print("iug ");Serial.print(iug);Serial.print(" iif ");Serial.print(iif);Serial.print(" ia1 ");Serial.println(ia1);
   if ((s_ndiode == 1) || ( s_pdiode == 1))  { 
     if ((iu == prev_x) && (ii > prev_y + 1 )) tft.drawLine(iu,prev_y,iu,ii,ILI9341_TraceCol);
@@ -1879,8 +1882,14 @@ void Graph( int ia0, int ia1, int ia2, int ia3, int base) {    //
     else                                      tft.drawPixel( iu, ii, ILI9341_TraceCol);
   }
   else   tft.drawPixel( iu, ii, ILI9341_TraceCol);  // pixel at bpn/pnp, MOS- and j-FET 
+
+  if ((ii == prev_y) && (s_flat == 0)) s_flat = 1;
   prev_x = iu;
   prev_y = ii;
+
+  if (iu ==  80)  i_3V = ii;  
+  if (iu == 187)  i_7V = ii;  
+
 
   
 /*
@@ -1908,26 +1917,34 @@ void Graph( int ia0, int ia1, int ia2, int ia3, int base) {    //
     }
   }
 
-  if (s_jfet == 1)     {
-
+  if (s_jfet == 1)   {
+    if (s_depl == 0)  {
+      if ((i_7V > 0 ) && (i_7V < 100 )) {
+        if ((i_3V - i_7V) < 11 ) {
+          s_depl = 1;  // no jFET,nMOS-depletion-mode ??
+      //    Serial.print("# i_3V ");Serial.print(i_3V);Serial.print("# i_7V ");Serial.println(i_7V);
+        }  
+      }  
+    }   
     if (s_vgate0 == 0)   {       // Vgate = 0
       if (s_tend == 0)  pinchJFET(iu, ii);         // pinch_off-vol
     }
-  }
-  if ((s_flat == 1) ||                   // flat trace
-     ((s_jfet == 1) && (iu > 210)))  {   // ##### trace not linear at the end
-    s_flat = 1;  
-    if (s_secy == 0)   {
-      if ((iu > 160) && (ii > 180))  {  // between 239 and 180 <<-- some j-FETs have small IDss
-  //    if ((ii > TFT_HEIGHT - 48) && (ii > 260))  {   // 192
- //       Serial.print("# iu ");Serial.print(iu);Serial.print(" ii ");Serial.println(ii);
-        s_secy = 1;
-      }
-      else {
-        if (ii <= 1)        {   // 4 : IDss > 50 mA
-          s_secy = -1;
-          return;
-        }
+ 
+    if (iu > 210)  {   // ##### trace not linear at the end
+      if (s_flat == 1) {
+        if (s_secy == 0)   {
+         
+          if (ii > 180)    {  // between 239 and 180 <<-- some j-FETs have small IDss
+        //  Serial.print("# iu ");Serial.print(iu);Serial.print(" ii ");Serial.println(ii);
+            s_secy = 1;
+            s_flat = 2;
+            return;
+          }
+        }   
+      }  
+      if (ii <= 4)        {   // 1 4 : IDss > 50 mA
+        s_secy = -1;
+        return;
       }
     }
   }
@@ -1953,7 +1970,11 @@ void ScanKind(TkindDUT kind) {
 
   // tft.fillRect(90,0,10,12,ILI9341_BLACK); tft.setTextColor(ILI9341_WHITE);tft.drawNumber(kind,90,0,2);   delay(2000);
  
-  if ((kind == tkNJFET) || (kind == tkPJFET))  fet_v = c4_FET;  // scale
+  if ((kind == tkNJFET) || (kind == tkPJFET)) {
+    fet_v  = c4_FET;  // scale
+    s_flat = 0;   // #####################
+    s_secy = 0;   //
+  }  
   else fet_v = 0;   // ?? 0 = default = 12V
  
   InitGraph();
@@ -2588,6 +2609,9 @@ void Scan_n_Dev(TkindDUT kind, int minBase, int maxBase, int incBase) {
   s_pdev = 0;
   s_pnp  = 0;
   s_flat = 0;
+  s_secy = 0;
+  i_7V = 0;
+  i_3V = 0;
      
   zw_maxb = maxBase;   //##########################
   zw_minb = minBase;   //##########################
@@ -2902,22 +2926,27 @@ second_scan_nDev:
         case tkNMOS:
           if (prev_x > 220) prev_x = 220;  // 270 test #######################################
           tft.fillRect(prev_x, prev_y - 6, 41, 13, ILI9341_BLACK);
-          if (s_depl == 1) {
-            tft.setTextColor(ILI9341_YELLOW);                    // complete n-MOS with: depl.
-            tft.drawString("depl.", 280, 33, 2);
-            drawDec1(-base, prev_x + 4, prev_y - 6, 2, ILI9341_BASE); // 1 nachkomma-stelle negativ
-            tft.setTextColor(ILI9341_WHITE);
-          }
+         
 
-          else drawDec1(base, prev_x + 4, prev_y - 6, 2, ILI9341_BASE); // 1 nachkomma-stelle
+          drawDec1(base, prev_x + 4, prev_y - 6, 2, ILI9341_BASE); // 1 nachkomma-stelle
           tft.drawString("V", prev_x + 35, prev_y - 6, 2); //DrawString("V", SmallFont, ILI9341_WHITE);
           break;
         case tkNJFET:
           if (prev_x > 220) prev_x = 220;    // 270 TEST ####################################
           tft.fillRect(prev_x, prev_y - 6, 46, 26, ILI9341_BLACK);
+          if (s_depl == 1) {
+            tft.fillRect(188,0,34,33,ILI9341_BLACK);
+            tft.fillRect(222,0,118,22,ILI9341_BLACK);
+            tft.setTextColor(ILI9341_YELLOW);
+            tft.drawString("n-MOS", 230, 3, 4);
+            drawMosFet('n', 185, 0, ILI9341_ORANGE);
+            tft.drawString("depl.", 280, 24, 2);
+            drawDec1(-base, prev_x + 4, prev_y - 6, 2, ILI9341_BASE); // 1 nachkomma-stelle negativ
+            tft.setTextColor(ILI9341_WHITE);
+          }
           // drawDec1(-(base-incBase)/10 ,prev_x + 4,prev_y - 6,2,ILI9341_BASE);   // 1 Nachkomma-Stelle
           // drawDec1(-(base - incBase)/10 ,prev_x + 6,prev_y - 6,2,ILI9341_BASE);   // 1 Nachkomma-Stelle
-          drawDec1(-base, prev_x + 4, prev_y - 6, 2, ILI9341_BASE); // 1 nachkomma-stelle
+          else drawDec1(-base, prev_x + 4, prev_y - 6, 2, ILI9341_BASE); // 1 nachkomma-stelle
           tft.drawString("V", prev_x + 37, prev_y - 6, 2); //DrawString("V", SmallFont, ILI9341_WHITE);
           delay(200);
           break;
@@ -2946,8 +2975,6 @@ end_nDev:
       delay(500);
     }
     if (kind == tkNJFET) {   // test only for depletion mode with small Rds  ###########################
-      kind = tkNMOS;  // depletion-mode ??
-      s_depl = 1;     // for sign in end_scan...
       if (s_secy != 3) s_secy = -1;   // second run with 100mA max. scale
       else s_secy = 4;    // ??test ?4
     }
@@ -3939,11 +3966,15 @@ void drawMosFet(uint8_t typ, uint16_t xp, uint16_t yp, int color) {
     tft.drawFastVLine(xp + 30, yp + 5, 5, color);     tft.drawFastVLine(xp + 31, yp + 5, 5, color);
     tft.drawFastVLine(xp + 30, yp + 17, 14, color);    tft.drawFastVLine(xp + 31, yp + 17, 14, color);
     tft.drawFastVLine(xp + 30, yp + 28, 5, color);     tft.drawFastVLine(xp + 31, yp + 28, 5, color);
-
-    tft.drawFastVLine(xp + 21, yp + 6, 5, color);     tft.drawFastVLine(xp + 20, yp + 6, 5, color);
-    tft.drawFastVLine(xp + 21, yp + 15, 6, color);    tft.drawFastVLine(xp + 20, yp + 15, 6, color);
-    tft.drawFastVLine(xp + 21, yp + 24, 5, color);    tft.drawFastVLine(xp + 20, yp + 24, 5, color);
-
+    if (s_depl == 0) {
+      tft.drawFastVLine(xp + 21, yp + 6, 5, color);     tft.drawFastVLine(xp + 20, yp + 6, 5, color);
+      tft.drawFastVLine(xp + 21, yp + 15, 6, color);    tft.drawFastVLine(xp + 20, yp + 15, 6, color);
+      tft.drawFastVLine(xp + 21, yp + 24, 5, color);    tft.drawFastVLine(xp + 20, yp + 24, 5, color);
+    }
+    else     {   // depletion-mode nMOS
+      tft.drawFastVLine(xp + 21, yp + 6, 24, color);  
+      tft.drawFastVLine(xp + 20, yp + 6, 24, color);
+    }  
     tft.drawFastVLine(xp + 16, yp + 7, 21, color);   tft.drawFastVLine(xp + 15, yp + 7, 21, color);
 
     tft.drawFastHLine(xp + 20, yp + 8, 11, color);   tft.drawFastHLine(xp + 20, yp + 9, 11, color);
@@ -4013,7 +4044,7 @@ void setup()  {     //
 
   pinMode(BOARD_LED, OUTPUT);
   // Initialize virtual COM over USB on Maple Mini
-  Serial.begin(9600);    // BAUD has no effect on USB serial: placeholder for physical UART
+// Serial.begin(9600);    // BAUD has no effect on USB serial: placeholder for physical UART
   // wait for serial monitor to be connected.
   /*
     while (!Serial)
